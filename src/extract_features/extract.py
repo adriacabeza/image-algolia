@@ -70,6 +70,10 @@ def encode_all_images(images_path: str, batch_size: int, photo_ids: str):
     with h5py.File(f'features/features.h5', 'w') as hf:
         hf.create_dataset('features', data=features)
 
+    # removing useless batch feature file
+    for batch_file in batch_files:
+        os.remove(batch_file)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
