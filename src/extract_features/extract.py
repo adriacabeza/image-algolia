@@ -27,7 +27,6 @@ def encode_search_query(search_query: list):
     return text_encoded.cpu().numpy()
 
 
-@timing
 def encode_image_batch(photos_batch: list):
     # Load all the photos from the files
     photos = [Image.open(photo_file) for photo_file in photos_batch]
@@ -67,6 +66,7 @@ def encode_all_images(images_path: str, batch_size: int, photo_ids: str):
     log.info('Merging features')
     batch_files = sorted(glob.glob('features/*.npy'))
     features = np.concatenate([np.load(features_file) for features_file in batch_files])
+    log.info(f'Features computed of shape {features.shape}')
     with h5py.File(f'features/features.h5', 'w') as hf:
         hf.create_dataset('features', data=features)
 

@@ -15,11 +15,10 @@ from src.util.time_util import timing
 def find_best_matches(text_features: npt.ArrayLike, image_features: npt.ArrayLike):
     # Compute the similarity between the search query and each photo using the Cosine similarity
     similarities = (image_features @ text_features.T).squeeze(1)
-
     # Sort the photos by their similarity score
     # TODO use a threshold to approach empty results
     best_photo_idx = (-similarities).argsort()
-    return best_photo_idx
+    return best_photo_idx, similarities
 
 
 @timing
@@ -28,8 +27,8 @@ def search(search_query: str, photo_features: npt.ArrayLike, photo_ids: list, re
     text_features = encode_search_query(search_query)
 
     # Find the best matches
-    best_photos = find_best_matches(text_features, photo_features)
-    result = [photo_ids[i] for i in best_photos[:results_count]]
+    best_photos, similarities = find_best_matches(text_features, photo_features)
+    result = [(photo_ids[i], similarities[i]) for i in best_photos[:results_count]]
     log.info(f'Result:{result}')
     return result
 
