@@ -1,6 +1,7 @@
 import argparse
 import glob
 import os
+import pandas as pd
 
 import clip
 import h5py
@@ -43,43 +44,69 @@ def encode_image_batch(photos_batch: list):
 
 
 @timing
-def encode_all_images(images_path: str, batch_size: int, photo_ids: str):
+def extract_new_images(images_path, photo_ids):
+    list_of_images = get_images(images_path)
+    new_list = list_of_images - photo_ids
+    log.info(f'New {len(new_list)} images found. Starting to extract')
+    encode_all_images(new_list, 8, photo_ids)
+
+
+def get_images(images_path: str):
     list_of_images = glob.glob(f'{images_path}/*.jpg') +\
                      glob.glob(f'{images_path}/*.jpeg') + \
-                     glob.glob(f'{images_path}/*.png') + glob.glob('tests/*.JPG')
+                     glob.glob(f'{images_path}/*.png') + glob.glob(f'{images_path}/*.JPG')
+
+    return list_of_images
+
+
+@timing
+def encode_all_images(list_of_images: list, batch_size: int, photo_ids: str):
     length = len(list_of_images)
     assert length > 0
-    images = list()
     with tqdm(total=length) as progress_bar:
         for i in range(0, len(list_of_images), batch_size):
             batch = list_of_images[i:i+batch_size]
-            images += batch
             batch_features = encode_image_batch(batch)
             progress_bar.update(batch_size)
             np.save(f'features/batch_{i}_{i + batch_size}.npy', batch_features)
+            photo_ids = [filename for filename in batch]
+            photo_ids_data = pd.DataFrame(photo_ids, columns=['photo_id'])
+            photo_ids_data.to_csv(f'features/batch_{i}_{i + batch_size}.csv', index=False)
 
     log.info('Features extracted')
-    with open(args.photo_ids, 'w') as f:
-        for image in images:
-            f.write('{}\n'.format(image))
+    csv_files = sorted(glob.glob("features/*.csv"))
+    photo_ids = pd.concat([pd.read_csv(ids_file) for ids_file in csv_files])
+    if os.path.exists(photo_ids):
+        log.info('Merging previous photo_ids with the latest update')
+        previous_photo_ids = pd.read_csv(photo_ids)
+        photo_ids = pd.concat([previous_photo_ids, photo_ids])
+    photo_ids.to_csv(photo_ids, index=False)
 
-    log.info('Merging features')
+    log.info('Merging batch features')
     batch_files = sorted(glob.glob('features/*.npy'))
     features = np.concatenate([np.load(features_file) for features_file in batch_files])
     log.info(f'Features computed of shape {features.shape}')
+    if os.path.exists('features/features.h5'):
+        log.info('Merging previous features with the latest update')
+        with h5py.File(args.features, 'r') as hf:
+            previous_photo_features = hf['features'][:]
+        features = np.concatenate([previous_photo_features, features])
+
     with h5py.File(f'features/features.h5', 'w') as hf:
         hf.create_dataset('features', data=features)
 
     # removing useless batch feature file
     for batch_file in batch_files:
         os.remove(batch_file)
+    for csv_file in csv_files:
+        os.remove(csv_file)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--images', type=str, required=True)
-    parser.add_argument('--photo_ids', type=str, default='photo_ids.txt')
+    parser.add_argument('--photo_ids', type=str, default='photo_ids.csv')
     args = parser.parse_args()
 
     assert os.path.exists(args.images)
