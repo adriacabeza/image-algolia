@@ -45,8 +45,10 @@ def encode_image_batch(photos_batch: list):
 
 @timing
 def extract_new_images(images_path, photo_ids):
+    with open(photo_ids) as f:
+        photos = f.readlines()
     list_of_images = get_images(images_path)
-    new_list = list_of_images - photo_ids
+    new_list = list(set(list_of_images) - set(photos))
     log.info(f'New {len(new_list)} images found. Starting to extract')
     encode_all_images(new_list, 8, photo_ids)
 
@@ -69,18 +71,18 @@ def encode_all_images(list_of_images: list, batch_size: int, photo_ids: str):
             batch_features = encode_image_batch(batch)
             progress_bar.update(batch_size)
             np.save(f'features/batch_{i}_{i + batch_size}.npy', batch_features)
-            photo_ids = [filename for filename in batch]
-            photo_ids_data = pd.DataFrame(photo_ids, columns=['photo_id'])
+            photos = [filename for filename in batch]
+            photo_ids_data = pd.DataFrame(photos, columns=['photo_id'])
             photo_ids_data.to_csv(f'features/batch_{i}_{i + batch_size}.csv', index=False)
 
     log.info('Features extracted')
     csv_files = sorted(glob.glob("features/*.csv"))
-    photo_ids = pd.concat([pd.read_csv(ids_file) for ids_file in csv_files])
+    photos_df = pd.concat([pd.read_csv(ids_file) for ids_file in csv_files])
     if os.path.exists(photo_ids):
         log.info('Merging previous photo_ids with the latest update')
         previous_photo_ids = pd.read_csv(photo_ids)
-        photo_ids = pd.concat([previous_photo_ids, photo_ids])
-    photo_ids.to_csv(photo_ids, index=False)
+        photo_df = pd.concat([previous_photo_ids, photos_df])
+    photos_df.to_csv(photo_ids, index=False)
 
     log.info('Merging batch features')
     batch_files = sorted(glob.glob('features/*.npy'))
@@ -88,7 +90,7 @@ def encode_all_images(list_of_images: list, batch_size: int, photo_ids: str):
     log.info(f'Features computed of shape {features.shape}')
     if os.path.exists('features/features.h5'):
         log.info('Merging previous features with the latest update')
-        with h5py.File(args.features, 'r') as hf:
+        with h5py.File('features/features.h5', 'r') as hf:
             previous_photo_features = hf['features'][:]
         features = np.concatenate([previous_photo_features, features])
 
