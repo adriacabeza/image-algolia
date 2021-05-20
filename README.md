@@ -1,4 +1,5 @@
 <h1 align="center"> Algolia for images: search images by content </h1>
+
 [![Python application](https://github.com/adriacabeza/image-algolia/actions/workflows/python-app.yml/badge.svg)](https://github.com/adriacabeza/image-algolia/actions/workflows/python-app.yml)
 
 Using the [CLIP model](https://arxiv.org/pdf/2103.00020.pdf) from OpenAI to build a service to search for images in a human way. 
