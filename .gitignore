@@ -1,7 +1,7 @@
 # Data 
 data/
 features/
-photo_ids.txt
+photo_ids.csv
 
 # MacOS stuff
 .DS_Store

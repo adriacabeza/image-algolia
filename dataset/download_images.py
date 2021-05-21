@@ -13,7 +13,8 @@ args = parser.parse_args()
 assert os.path.exists(args.images_csv)
 os.makedirs(args.data_path, exist_ok=True)
 
-def download_photo(photo):
+
+def download_photo(photo: str):
     photo_id = photo[0]
     photo_url = photo[1] + "?w=640"
 
