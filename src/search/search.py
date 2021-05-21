@@ -1,6 +1,5 @@
 import argparse
 import os
-import pickle
 
 import h5py
 import numpy as np
@@ -11,14 +10,15 @@ from src.extract_features.extract import encode_search_query, extract_new_images
 from src.util.time_util import timing
 
 
-@timing
-def find_best_matches(text_features: npt.ArrayLike, image_features: npt.ArrayLike):
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    return np.exp(x) / np.sum(np.exp(x), axis=0)
+
+
+def compute_similarity(text_features: npt.ArrayLike, image_features: npt.ArrayLike):
     # Compute the similarity between the search query and each photo using the Cosine similarity
-    similarities = (image_features @ text_features.T).squeeze(1)
-    # Sort the photos by their similarity score
-    # TODO use a threshold to approach empty results
-    best_photo_idx = (-similarities).argsort()
-    return best_photo_idx, similarities
+    similarities = 100*(text_features @ image_features.T)
+    return softmax(similarities[0])
 
 
 @timing
@@ -26,10 +26,10 @@ def search(search_query: str, photo_features: npt.ArrayLike, photo_ids: list, re
     # Encode the search query
     text_features = encode_search_query(search_query)
     # Find the best matches
-    best_photos, similarities = find_best_matches(text_features, photo_features)
-    result = [(photo_ids[i], similarities[i]) for i in best_photos[:results_count]]
-    log.info(f'Result:{result}')
-    return result
+    similarities = compute_similarity(text_features, photo_features)
+    best_match = sorted(zip(similarities, range(len(photo_features))), key=lambda x: x[0], reverse=True) # TODO argsort
+    for i in range(results_count):
+        log.info(f'{i}: {photo_ids[best_match[i][1]].rstrip()} with a similarity of {round(100*best_match[i][0],3)}%')
 
 
 if __name__ == '__main__':
@@ -49,7 +49,7 @@ if __name__ == '__main__':
         else:
             raise Exception("You need to specify the photos path if the features do not exist")
     elif args.images:
-        log.info('Extracting new images inserted to the database')
+        log.info('Checking for new images inserted to the database')
         extract_new_images(args.images, args.photo_ids)
 
     with open(args.photo_ids) as f:
@@ -58,5 +58,6 @@ if __name__ == '__main__':
     with h5py.File(args.features, 'r') as hf:
         photo_features = hf['features'][:]
 
+    assert args.results_count <= len(photo_ids)
     log.info(f'Searching for {args.query} in our image database of {len(photo_ids)} images')
     search(args.query, photo_features, photo_ids, args.results_count)
