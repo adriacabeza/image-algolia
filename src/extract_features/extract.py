@@ -117,4 +117,5 @@ if __name__ == '__main__':
 
     os.makedirs('features', exist_ok=True)
     log.info(f'Starting to process all the images from {args.images}')
-    encode_all_images(args.images, args.batch_size, args.photo_ids)
+    list_of_images = get_images(args.images)
+    encode_all_images(list_of_images, args.batch_size, args.photo_ids)
