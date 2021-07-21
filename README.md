@@ -54,3 +54,11 @@ The previous method will create a hdf5 file in the features folder containing th
 {image_algolia} - <2021-05-21 11:51:09,674> - [INFO   ] - func:'search' took: 0.3792 sec
 ```
 
+
+## Containers solve all problems
+ 
+You can run it using docker-compose. It will automatically extract first the features and then search for the QUERY present in the docker-compose YAML. 
+
+```
+docker-compose -f docker-compose.test.yml up --build
+```

@@ -1,0 +1,11 @@
+version: '3.5'
+services:
+
+  image_algolia:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - QUERY=forrest
+    volumes:
+      - './data:/srv/image_algolia/data'
